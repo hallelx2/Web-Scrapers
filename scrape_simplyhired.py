@@ -1,58 +1,79 @@
 import requests
-from rich import print
+from requests_html import HTMLSession
 import pandas as pd
-import csv
+import numpy as np
+import re
+from bs4 import BeautifulSoup
+from rich import print
 
+url = 'https://www.simplyhired.com/search?q=Dentist+Jobs&l='
+base_url = 'https://www.simplyhired.com'
 
-def convert_to_indeed_jobs_csv(job_data, desired_columns=["title", "company", "location", "salaryInfo",'companyRating', "snippet", 'botUrl']):
+session = HTMLSession()
+html = session.get(url)
+content = html.text
+
+soup = BeautifulSoup(content, 'html.parser')
+
+job_cards = soup.find_all('div', class_ = 'css-f8dtpc')
+
+def extract_job_details(job_card):
   """
-  Converts a list of dictionaries containing job information to a pandas DataFrame
-  and exports it as a CSV file named "indeed_jobs.csv".
+  Extracts key features (title, company, location, salary, snippet, date, job URL) from a job listing HTML snippet.
 
   Args:
-      job_data: A list of dictionaries, where each dictionary represents a job listing.
-      desired_columns: A list of strings specifying the desired columns to include in the CSV (default: ["title", "company", "location", "salaryInfo", "snippet"]).
+      html_content: The HTML content of the job listing snippet.
+
+  Returns:
+      A dictionary containing extracted key features of the job.
   """
 
-  # Extract relevant data and create a list of lists
-  extracted_data = []
-  for item in job_data:
-    extracted_data.append([item.get(col) for col in desired_columns])
+ 
 
-  # Create a pandas DataFrame
-  df = pd.DataFrame(extracted_data, columns=desired_columns)
+    # Extract job title using data-testid
+  job_title_element = soup.find('a', class_="chakra-button")
+  job_title = job_title_element.text.strip() if job_title_element else None
 
-  # Export the DataFrame to a CSV file
-  df.to_csv("indeed_jobs.csv", index=False)
-
-  print("CSV file exported successfully!")
-  
-url = "https://www.simplyhired.com/_next/data/CrjGLb7NbUhm7ymGsRfbc/en-US/search.json"
-
-querystring = {"q":"Dentist Jobs","l":""}
-
-payload = ""
-headers = {
-    "cookie": "shk=1hrun7q4cmknh801; csrf=-nZ09ciM-NmGMfdhJjMbcXmlyNGObEJoxl5z0hI_zoJWHzEgYrYw7EST3JsywEFInWexZMscYablDZwFauZz; __cf_bm=yZqAokKpSg_UE4hbyGaZEGYKsidRE1pU4idbzIlEmqA-1713649216-1.0.1.1-KKSN_7PH1vCEBnFXOYt5GDq5WS4_JlXR58Ibo7Nl1K8E0ckY4Z8vpTpRTNN4SyVG1Ak1MCMJb2OU6JW6eLo5kA; _ga=GA1.1.1717221301.1713649238; OptanonConsent=isGpcEnabled=0&datestamp=Sat+Apr+20+2024+22%3A40%3A43+GMT%2B0100+(West+Africa+Standard+Time)&version=202308.2.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=fcd3786b-e1cb-4730-9adc-99506412fad6&interactionCount=0&landingPath=https%3A%2F%2Fwww.simplyhired.com%2F&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0007%3A0; rq=%5B%22q%3DDentist%2BJobs%26l%3DLagos%252C%2B05%26ts%3D1713649256308%22%5D; _ga_9GC5K2RCSP=GS1.1.1713649238.1.1.1713649257.0.0.0",
-    "accept": "*/*",
-    "accept-language": "en-GB,en;q=0.9,de-DE;q=0.8,de;q=0.7,en-US;q=0.6",
-    "priority": "u=1, i",
-    "referer": "https://www.simplyhired.com/search?q=Dentist+Jobs&l=Lagos%2C+05",
-    "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": "Linux",
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-origin",
-    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "x-nextjs-data": "1"
-}
-
-response = requests.request("GET", url, data=payload, headers=headers, params=querystring).json()
-
-jobs = response['pageProps']['jobs']
-
-convert_to_indeed_jobs_csv(jobs)
+  # Extract company name using data-testid
+  company_element = soup.find('span', data_testid='companyName')
+  company_name = company_element.text.strip() if company_element else None
 
 
+  # Extract location
+  location_element = job_card.find('span', data_testid='searchSerpJobLocation')
+  location = location_element.text.strip() if location_element else None
 
+  # Extract salary
+  salary_element = job_card.find('p', class_='chakra-text css-1g1y608')
+  salary = salary_element.text.strip() if salary_element else None
+
+  # Extract job snippet
+  snippet_element = job_card.find('p', class_='chakra-text css-jhqp7z')
+  snippet = snippet_element.text.strip() if snippet_element else None
+
+  # Extract date posted
+  date_element = job_card.find('p', class_='chakra-text css-5yilgw')
+  date_posted = date_element.text.strip() if date_element else None
+
+  # Extract job URL
+  job_url_element = job_card.find('h2', class_='chakra-text css-8rdtm5').find('a')
+  job_url = (base_url+job_url_element['href']) if job_url_element else None
+
+  # Create a dictionary with extracted features
+  job_details = {
+      'title': job_title,
+      'company': company_name,
+      'location': location,
+      'salary': salary,
+      'snippet': snippet,
+      'date_posted': date_posted,
+      'job_url': job_url
+  }
+
+  return job_details
+
+overall = [extract_job_details(i) for i in job_cards]
+
+df = pd.DataFrame(overall, columns=['TItle', 'Company', 'Location', 'Salary', 'Summary', 'Date Posted', 'Link'])
+
+df.to_csv('simplyhired.csv', index=False)
