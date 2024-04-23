@@ -17,6 +17,7 @@ selenium-wire = "*"
 scrapy = "*"
 selectolax = "*"
 webdriver-manager = "*"
+undetected-chromedriver = "*"
 
 [dev-packages]
 

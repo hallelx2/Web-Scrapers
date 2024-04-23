@@ -36,6 +36,31 @@ browser.execute_script("arguments[0].click();", search_button)
 # Allow the page to load all its content fully before going to the other steps
 sleep(5)
 
+current_url = browser.current_url
+
+def modify_job_link_id(original_url, new_id):
+  """
+  Modifies the job link in the provided URL by replacing the last ID with a new ID.
+
+  Args:
+      original_url: The original job link URL.
+      new_id: The new ID to use in the modified link.
+
+  Returns:
+      The modified job link URL with the new ID.
+  """
+
+  # Split the URL at the last '&' to separate parameters
+  url_parts = original_url.split('&')[:-1]  # Exclude the last part containing the ID
+
+  # Extract the last ID (assuming it's after 'vjk=')
+  last_id = url_parts[-1].split('=')[-1]
+
+  # Rebuild the URL with the new ID
+  modified_url = '&'.join(url_parts) + '&vjk=' + new_id
+
+  return modified_url
+
 
 def get_data(job_listing):
     # Extract job title
@@ -70,9 +95,13 @@ def get_data(job_listing):
     
     # Extract job summary
     summary = job_listing.find('div', class_='css-9446fg eu4oa1w0').text.strip()
-    
+
+    # Extract Job Link
+    link_id = job_listing.find('a').get('data-jk')
+    link = modify_job_link_id(current_url, link_id)
+
     # Return a tuple containing all the extracted information
-    return (title, company, location, salary, job_type, date_posted, summary)
+    return (title, company, location, salary, job_type, date_posted, summary, link)
 
 # Get the HTML source code of the page after it has fully loaded
 html = browser.page_source
@@ -84,11 +113,11 @@ soup = BeautifulSoup(html, 'html.parser')
 job_listings = [get_data(i)for i in soup.find_all('div', class_='job_seen_beacon')]
 
 # Convert list of records into a DataFrame
-df = pd.DataFrame(job_listings, columns=['Title', 'Company', 'Location', 'Salary', 'Job Type', 'Date Posted', 'Summary'])
+df = pd.DataFrame(job_listings, columns=['Title', 'Company', 'Location', 'Salary', 'Job Type', 'Date Posted', 'Summary', 'Job Link'])
 # Save DataFrame to a CSV file
 df.to_csv('indeed_job_data.csv', index=False)
 
-print("Data saved to job_data.csv")
+print("Data saved to indeed_job_data.csv")
 
 
 
