@@ -1,17 +1,28 @@
-import requests
-from requests_html import HTMLSession
 import pandas as pd
-import numpy as np
-import re
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from time import sleep
 from rich import print
 
 url = 'https://www.simplyhired.com/search?q=Dentist+Jobs&l='
 base_url = 'https://www.simplyhired.com'
 
-session = HTMLSession()
-html = session.get(url)
-content = html.text
+# Set chrome to headless
+chrome_options = webdriver.ChromeOptions()
+# chrome_options.add_argument('--headless')
+chrome_options.add_argument('--no-sandbox')
+chrome_options.add_argument('--disable-dev-shm-usage')
+
+# Add the driver to be able to load the pages
+browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options = chrome_options)
+
+browser.get(url)
+
+content = browser.page_source
 
 soup = BeautifulSoup(content, 'html.parser')
 
@@ -28,19 +39,17 @@ def extract_job_details(job_card):
       A dictionary containing extracted key features of the job.
   """
 
- 
-
     # Extract job title using data-testid
-  job_title_element = soup.find('a', class_="chakra-button")
+  job_title_element = job_card.find('a', class_="chakra-button")
   job_title = job_title_element.text.strip() if job_title_element else None
 
   # Extract company name using data-testid
-  company_element = soup.find('span', data_testid='companyName')
+  company_element = job_card.find('span').get('data-testid')
   company_name = company_element.text.strip() if company_element else None
 
 
   # Extract location
-  location_element = job_card.find('span', data_testid='searchSerpJobLocation')
+  location_element = job_card.find('span').get('data-testid')
   location = location_element.text.strip() if location_element else None
 
   # Extract salary
@@ -61,19 +70,19 @@ def extract_job_details(job_card):
 
   # Create a dictionary with extracted features
   job_details = {
-      'title': job_title,
-      'company': company_name,
-      'location': location,
-      'salary': salary,
-      'snippet': snippet,
-      'date_posted': date_posted,
-      'job_url': job_url
+      'Title': job_title,
+      'Company': company_name,
+      'Location': location,
+      'Salary': salary,
+      'Snippet': snippet,
+      'Date Posted': date_posted,
+      'Link': job_url
   }
 
   return job_details
 
 overall = [extract_job_details(i) for i in job_cards]
 
-df = pd.DataFrame(overall, columns=['TItle', 'Company', 'Location', 'Salary', 'Summary', 'Date Posted', 'Link'])
+df = pd.DataFrame(overall)
 
-df.to_csv('simplyhired.csv', index=False)
+df.to_csv('scraped datasets/simplyhired.csv', index=False)
