@@ -150,6 +150,6 @@ df = pd.DataFrame(job_list)
 current_datetime = datetime.datetime.now()
 formatted_time = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
 
-#Save the dataframe to a CSV file
+# Save the dataframe to a CSV file
 df.to_csv(f'scraped datasets/simplyhired {formatted_time}.csv', index=False)
 print('Websites successfully scraped')

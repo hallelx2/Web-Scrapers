@@ -9,6 +9,7 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 from rich import print
+import datetime
 
 # Add settings and Configurations
 # Set chrome to headless
@@ -21,7 +22,7 @@ chrome_options.add_argument('--disable-dev-shm-usage')
 browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options = chrome_options)
 
 # Get the content of the website
-website = 'https://ng.indeed.com/'
+website = 'https://www.indeed.com/'
 browser.get(website)
 
 # Get the search area and button to be able to automate search
@@ -98,7 +99,7 @@ def get_data(job_listing):
 
     # Extract Job Link
     link_id = job_listing.find('a').get('data-jk')
-    link = modify_job_link_id(current_url, link_id)
+    link = modify_job_link_id(website, link_id)
 
     # Return a tuple containing all the extracted information
     return (title, company, location, salary, job_type, date_posted, summary, link)
@@ -114,10 +115,14 @@ job_listings = [get_data(i)for i in soup.find_all('div', class_='job_seen_beacon
 
 # Convert list of records into a DataFrame
 df = pd.DataFrame(job_listings, columns=['Title', 'Company', 'Location', 'Salary', 'Job Type', 'Date Posted', 'Summary', 'Job Link'])
-# Save DataFrame to a CSV file
-df.to_csv('indeed_job_data.csv', index=False)
 
-print("Data saved to indeed_job_data.csv")
+# Getting the current date and time to be able to name the csv file to be saved
+current_datetime = datetime.datetime.now()
+formatted_time = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+# Save the dataframe to a CSV file
+df.to_csv(f'scraped datasets/indeed jobs {formatted_time}.csv', index=False)
+print('Websites successfully scraped')
 
 
 
